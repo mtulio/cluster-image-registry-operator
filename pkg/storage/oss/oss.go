@@ -50,10 +50,6 @@ type driver struct {
 	Listers     *regopclient.Listers
 	credentials *AlibabaCloudCredentials
 
-	// // endpointsResolver is populated by UpdateEffectiveConfig and takes into
-	// // account the cluster configuration.
-	// endpointsResolver *endpointsResolver
-
 	// roundTripper is used only during tests.
 	roundTripper http.RoundTripper
 }
@@ -104,11 +100,10 @@ func (d *driver) UpdateEffectiveConfig() error {
 }
 
 func (d *driver) getCredentialsConfigData() error {
-	// Use cached credentils
-	// TODO refresh cache
 	if d.credentials != nil {
 		return nil
 	}
+
 	// Look for a user defined secret to get the Alibaba Cloud credentials from first
 	sec, err := d.Listers.Secrets.Get(defaults.ImageRegistryPrivateConfigurationUser)
 	if err != nil && errors.IsNotFound(err) {
@@ -131,12 +126,12 @@ func (d *driver) getCredentialsConfigData() error {
 		if v, ok := sec.Data[envRegistryStorageOssAccessKeyId]; ok {
 			accessKeyID = string(v)
 		} else {
-			return fmt.Errorf("secret %q does not contain required key \"%s\"", fmt.Sprintf("%s/%s", defaults.ImageRegistryOperatorNamespace, defaults.ImageRegistryPrivateConfigurationUser), envRegistryStorageOssAccessKeyId)
+			return fmt.Errorf("secret %q does not contain required key \"%q\"", fmt.Sprintf("%s/%s", defaults.ImageRegistryOperatorNamespace, defaults.ImageRegistryPrivateConfigurationUser), envRegistryStorageOssAccessKeyId)
 		}
 		if v, ok := sec.Data[envRegistryStorageOssAccessKeySecret]; ok {
 			accessKeySecret = string(v)
 		} else {
-			return fmt.Errorf("secret %q does not contain required key \"%s\"", fmt.Sprintf("%s/%s", defaults.ImageRegistryOperatorNamespace, defaults.ImageRegistryPrivateConfigurationUser), envRegistryStorageOssAccessKeySecret)
+			return fmt.Errorf("secret %q does not contain required key \"%q\"", fmt.Sprintf("%s/%s", defaults.ImageRegistryOperatorNamespace, defaults.ImageRegistryPrivateConfigurationUser), envRegistryStorageOssAccessKeySecret)
 		}
 
 		d.credentials = &AlibabaCloudCredentials{
@@ -150,7 +145,6 @@ func (d *driver) getCredentialsConfigData() error {
 
 // getOSSRegion returns an region that allows Docker Registry to access Alibaba Cloud OSS service
 // details in https://www.alibabacloud.com/help/doc-detail/31837.htm
-
 func (d *driver) getOSSRegion() string {
 	region := d.Config.Region
 	return "oss-" + region
@@ -158,22 +152,19 @@ func (d *driver) getOSSRegion() string {
 
 // getOSSEndpoint returns an endpoint that allows us to interact
 // with the Alibaba Cloud OSS service, details in https://www.alibabacloud.com/help/doc-detail/31837.htm
-
 func (d *driver) getOSSEndpoint() string {
 	endpoint := d.Config.RegionEndpoint
 
 	if len(endpoint) == 0 {
 		if d.Config.Internal {
 			return fmt.Sprintf("https://oss-%s-internal.aliyuncs.com", d.Config.Region)
-		} else {
-			return fmt.Sprintf("https://oss-%s.aliyuncs.com", d.Config.Region)
 		}
+		return fmt.Sprintf("https://oss-%s.aliyuncs.com", d.Config.Region)
 	}
 	return endpoint
 }
 
 func (d *driver) getOSSService() (*oss.Client, error) {
-
 	err := d.getCredentialsConfigData()
 	if err != nil {
 		return nil, err
@@ -191,13 +182,6 @@ func (d *driver) getOSSService() (*oss.Client, error) {
 	}
 
 	if d.roundTripper != nil {
-		if client.HTTPClient != nil {
-			client.HTTPClient.Transport = d.roundTripper
-		} else {
-			client.HTTPClient = &http.Client{
-				Transport: d.roundTripper,
-			}
-		}
 		client.SetTransport(d.roundTripper)
 	}
 	return client, err
@@ -372,14 +356,12 @@ func (d *driver) CreateStorage(cr *imageregistryv1.Config) error {
 			if oerr, ok := err.(oss.ServiceError); ok {
 				switch oerr.Code {
 				case "NoSuchBucket", "NotFound":
-					// If the bucket doesn't exist that's ok, we'll try to create it
 					util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionFalse, oerr.Code, oerr.Error())
+					return fmt.Errorf("The bucket %s not found ", d.Config.Bucket)
 				default:
 					util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
 					return err
 				}
-				util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionFalse, oerr.Code, oerr.Error())
-				return err
 			}
 			util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
 			return err
@@ -399,8 +381,8 @@ func (d *driver) CreateStorage(cr *imageregistryv1.Config) error {
 
 	} else {
 		generatedName := false
-		// Retry up to 5000 times if we get a naming conflict
-		const numRetries = 5000
+		// Retry up to 500 times if we get a naming conflict
+		const numRetries = 500
 		for i := 0; i < numRetries; i++ {
 			// If the bucket name is blank, let's generate one
 			if len(d.Config.Bucket) == 0 {
