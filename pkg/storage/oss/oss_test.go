@@ -404,45 +404,6 @@ func TestStorageManagementState(t *testing.T) {
 				</BucketInfo>
 				`,
 		},
-		//{
-		//	name:                    "non-existing bucket provided",
-		//	expectedManagementState: imageregistryv1.StorageManagementStateManaged,
-		//	config: &imageregistryv1.Config{
-		//		Spec: imageregistryv1.ImageRegistrySpec{
-		//			Storage: imageregistryv1.ImageRegistryConfigStorage{
-		//				OSS: &imageregistryv1.ImageRegistryConfigStorageOSS{
-		//					Bucket: TestYetAnotherBucketName,
-		//				},
-		//			},
-		//		},
-		//	},
-		//	responseCodes: []int{http.StatusNotFound, http.StatusOK},
-		//	respBody: `
-		//		<?xml version="1.0" encoding="UTF-8"?>
-		//		<Error>
-		//		  <Code>NoSuchBucket</Code>
-		//		  <Message>The specified bucket does not exist.</Message>
-		//		  <RequestId>568D547F31243C673BA1****</RequestId>
-		//		  <HostId>nosuchbucket.oss.aliyuncs.com</HostId>
-		//		  <BucketName>nosuchbucket</BucketName>
-		//		</Error>
-		//	`,
-		//},
-		//{
-		//	name:                    "non-existing bucket provided (management set)",
-		//	expectedManagementState: "bar",
-		//	config: &imageregistryv1.Config{
-		//		Spec: imageregistryv1.ImageRegistrySpec{
-		//			Storage: imageregistryv1.ImageRegistryConfigStorage{
-		//				ManagementState: "bar",
-		//				OSS: &imageregistryv1.ImageRegistryConfigStorageOSS{
-		//					Bucket: TestAnotherBucketName,
-		//				},
-		//			},
-		//		},
-		//	},
-		//	responseCodes: []int{http.StatusNotFound},
-		//},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			drv := NewDriver(context.Background(), tt.config.Spec.Storage.OSS, listers)
@@ -646,49 +607,6 @@ func TestUserProvidedTags(t *testing.T) {
 				</BucketInfo>
 				`,
 		},
-		//{
-		//	name:      "with user tags and creating provided bucket",
-		//	infraName: "tinfra",
-		//	userTags: []configv1.AlibabaCloudResourceTag{
-		//		{
-		//			Key:   "tag0",
-		//			Value: "value0",
-		//		},
-		//		{
-		//			Key:   "tag1",
-		//			Value: "value1",
-		//		},
-		//	},
-		//	responseCodes: []int{http.StatusNotFound},
-		//	expectedTags: []*oss.Tag{
-		//		{
-		//			Key:   "kubernetes.io/cluster/tinfra",
-		//			Value: "owned",
-		//		},
-		//		{
-		//			Key:   "Name",
-		//			Value: "tinfra-image-registry",
-		//		},
-		//		{
-		//			Key:   "tag0",
-		//			Value: "value0",
-		//		},
-		//		{
-		//			Key:   "tag1",
-		//			Value: "value1",
-		//		},
-		//	},
-		//	config: &imageregistryv1.Config{
-		//		Spec: imageregistryv1.ImageRegistrySpec{
-		//			Storage: imageregistryv1.ImageRegistryConfigStorage{
-		//				ManagementState: "Managed",
-		//				OSS: &imageregistryv1.ImageRegistryConfigStorageOSS{
-		//					Bucket: TestBucketName,
-		//				},
-		//			},
-		//		},
-		//	},
-		//},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := cirofake.NewFixturesBuilder()
