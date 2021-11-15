@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/openshift/cluster-image-registry-operator/pkg/storage/oss"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 
@@ -19,6 +17,7 @@ import (
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/emptydir"
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/gcs"
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/ibmcos"
+	"github.com/openshift/cluster-image-registry-operator/pkg/storage/oss"
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/pvc"
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/s3"
 	"github.com/openshift/cluster-image-registry-operator/pkg/storage/swift"
@@ -181,6 +180,9 @@ func GetPlatformStorage(listers *regopclient.Listers) (imageregistryv1.ImageRegi
 			Claim: defaults.PVCImageRegistryName,
 		}
 		replicas = 1
+	case configapiv1.AlibabaCloudPlatformType:
+		cfg.OSS = &imageregistryv1.ImageRegistryConfigStorageOSS{}
+		replicas = 2
 	// Unknown platforms or LibVirt: we configure image registry using
 	// EmptyDir storage.
 	case configapiv1.LibvirtPlatformType:
