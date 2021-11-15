@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/openshift/cluster-image-registry-operator/pkg/storage/oss"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 
@@ -100,6 +102,12 @@ func NewDriver(cfg *imageregistryv1.ImageRegistryConfigStorage, kubeconfig *rest
 		names = append(names, "Azure")
 		ctx := context.Background()
 		drivers = append(drivers, azure.NewDriver(ctx, cfg.Azure, listers))
+	}
+
+	if cfg.OSS != nil {
+		names = append(names, "OSS")
+		ctx := context.Background()
+		drivers = append(drivers, oss.NewDriver(ctx, cfg.OSS, listers))
 	}
 
 	switch len(drivers) {
