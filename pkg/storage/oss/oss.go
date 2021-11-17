@@ -356,17 +356,17 @@ func (d *driver) CreateStorage(cr *imageregistryv1.Config) error {
 			if oerr, ok := err.(oss.ServiceError); ok {
 				switch oerr.Code {
 				case "NoSuchBucket", "NotFound":
-					util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionFalse, oerr.Code, oerr.Error())
-					return fmt.Errorf("The bucket %s not found ", d.Config.Bucket)
+					// If the bucket doesn't exist that's ok, we'll try to create it
+					klog.Infof("The bucket %s not found ", d.Config.Bucket)
 				default:
 					util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
 					return err
 				}
+			} else {
+				util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
+				return err
 			}
-			util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
-			return err
 		}
-
 	}
 
 	if len(d.Config.Bucket) != 0 && bucketExists {
