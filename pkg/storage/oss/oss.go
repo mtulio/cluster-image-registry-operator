@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -49,6 +50,7 @@ type driver struct {
 	Config      *imageregistryv1.ImageRegistryConfigStorageOSS
 	Listers     *regopclient.Listers
 	credentials *AlibabaCloudCredentials
+	auth        auth.Credentials
 
 	// roundTripper is used only during tests.
 	roundTripper http.RoundTripper
@@ -112,7 +114,7 @@ func (d *driver) getCredentialsConfigData() error {
 		if err != nil {
 			return fmt.Errorf("unable to get cluster minted credentials %q: %v", fmt.Sprintf("%s/%s", defaults.ImageRegistryOperatorNamespace, defaults.CloudCredentialsName), err)
 		}
-
+		fmt.Printf(">>> getCredentialsConfigData() secret: %s", sec.Name)
 		credentials, err := sharedCredentialsDataFromSecret(sec)
 		if err != nil {
 			return fmt.Errorf("failed to generate shared secrets data: %v", err)
@@ -277,18 +279,19 @@ func (d *driver) bucketExists(bucketName string) (bool, error) {
 	if len(bucketName) == 0 {
 		return false, nil
 	}
-
+	fmt.Printf(">>> bucketExists() 01 \n")
 	svc, err := d.getOSSService()
 	if err != nil {
 		return false, err
 	}
 
+	fmt.Printf(">>> bucketExists() 02 \n")
 	_, err = svc.GetBucketInfo(bucketName)
-
+	fmt.Printf(">>> bucketExists() 02.A: %v\n", err)
 	if err != nil {
 		return false, err
 	}
-
+	fmt.Printf(">>> bucketExists() 03 \n")
 	return true, nil
 }
 
@@ -298,20 +301,26 @@ func (d *driver) StorageExists(cr *imageregistryv1.Config) (bool, error) {
 	if len(d.Config.Bucket) == 0 {
 		return false, nil
 	}
-
+	fmt.Printf(">>> StorageExists() 01 %s \n", d.Config.Bucket)
 	bucketExists, err := d.bucketExists(d.Config.Bucket)
+	fmt.Printf(">>> StorageExists() 02 [%v] [%s] \n", bucketExists, err)
 	if bucketExists {
+		fmt.Printf(">>> StorageExists() 03.A \n")
 		util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionTrue, "OSS Bucket Exists", "")
+		fmt.Printf(">>> StorageExists() 03.A 02\n")
 	}
 	if err != nil {
+		fmt.Printf(">>> StorageExists() 03.B 01\n")
 		if oerr, ok := err.(oss.ServiceError); ok {
 			util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionFalse, oerr.Code, oerr.Error())
 			return false, nil
 		}
+		fmt.Printf(">>> StorageExists() 03.B 02\n")
 		util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
+		fmt.Printf(">>> StorageExists() 03.B 03\n")
 		return false, err
 	}
-
+	fmt.Printf(">>> StorageExists() 04 \n")
 	return true, nil
 
 }
@@ -347,22 +356,28 @@ func (d *driver) CreateStorage(cr *imageregistryv1.Config) error {
 	// If a bucket name is supplied, and it already exists and we can access it
 	// just update the config
 	var bucketExists bool
+	fmt.Printf(">>> CreateStorage() 01= len(d.Config.Bucket) : %v \n", len(d.Config.Bucket))
 	if len(d.Config.Bucket) != 0 {
 		bucketExists, err = d.bucketExists(d.Config.Bucket)
+		fmt.Printf(">>> CreateStorage() 01.A= bucketExists : %v \n", bucketExists)
 		if bucketExists {
 			util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionTrue, "OSS Bucket Exists", "")
 		}
+		fmt.Printf(">>> CreateStorage() 01.B= err.(oss.ServiceError) : %v \n", err)
 		if err != nil {
 			if oerr, ok := err.(oss.ServiceError); ok {
 				switch oerr.Code {
 				case "NoSuchBucket", "NotFound":
 					// If the bucket doesn't exist that's ok, we'll try to create it
 					klog.Infof("The bucket %s not found ", d.Config.Bucket)
+					fmt.Printf(">>> CreateStorage() 01.B.1= oerr.Code : %s \n", oerr.Code)
 				default:
 					util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
+					fmt.Printf(">>> CreateStorage() 01.B.2= oerr.Code : %s \n", oerr.Code)
 					return err
 				}
 			} else {
+				fmt.Printf(">>> CreateStorage() 01.B.3= oerr.Code \n")
 				util.UpdateCondition(cr, defaults.StorageExists, operatorapi.ConditionUnknown, "Unknown Error Occurred", err.Error())
 				return err
 			}

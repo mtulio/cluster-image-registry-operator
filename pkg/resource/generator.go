@@ -120,6 +120,7 @@ func (g *Generator) List(cr *imageregistryv1.Config) ([]Mutator, error) {
 func (g *Generator) syncStorage(cr *imageregistryv1.Config) error {
 	var runCreate bool
 	// Create a driver with the current configuration
+	fmt.Println(">>> syncStorage() 01")
 	driver, err := storage.NewDriver(&cr.Spec.Storage, g.kubeconfig, g.listers)
 	if err == storage.ErrStorageNotConfigured {
 		cr.Spec.Storage, _, err = storage.GetPlatformStorage(g.listers)
@@ -131,11 +132,11 @@ func (g *Generator) syncStorage(cr *imageregistryv1.Config) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(">>> syncStorage() 02")
 	if driver.StorageChanged(cr) {
 		runCreate = true
 	} else {
-		exists, err := driver.StorageExists(cr)
+		exists, _ := driver.StorageExists(cr)
 		if err != nil {
 			return err
 		}
@@ -143,17 +144,20 @@ func (g *Generator) syncStorage(cr *imageregistryv1.Config) error {
 			runCreate = true
 		}
 	}
-
+	fmt.Printf(">>> syncStorage() 03: %v", runCreate)
 	if runCreate {
+		fmt.Printf(">>> syncStorage() 03.0: %v", runCreate)
 		reconf := g.storageReconfigured(cr, g.kubeconfig, g.listers)
 		if err := driver.CreateStorage(cr); err != nil {
+			fmt.Printf(">>> syncStorage() 03.1: %v", err)
 			return err
 		}
 		if reconf {
 			metrics.StorageReconfigured()
 		}
+		fmt.Printf(">>> syncStorage() 03.2: %v", reconf)
 	}
-
+	fmt.Printf(">>> syncStorage() 04: %v", runCreate)
 	return nil
 }
 

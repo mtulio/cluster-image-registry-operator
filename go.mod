@@ -15,6 +15,7 @@ require (
 	github.com/IBM/go-sdk-core/v5 v5.5.0
 	github.com/IBM/ibm-cos-sdk-go v1.7.0
 	github.com/IBM/platform-services-go-sdk v0.18.15
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1263
 	github.com/aliyun/aliyun-oss-go-sdk v2.1.10+incompatible
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/davecgh/go-spew v1.1.1

@@ -250,6 +250,10 @@ func (c *Controller) sync() error {
 	}
 	cr = cr.DeepCopy() // we don't want to change the cached version
 	prevCR := cr.DeepCopy()
+	klog.Info(">>> sync() >>> 01")
+	klog.Info(">>> 01: prevCR.Spec.Storage >>> %s", prevCR.Spec.Storage)
+	klog.Info(">>> 01: prevCR.Spec.Storage.S3 >>> %s", prevCR.Spec.Storage.S3)
+	klog.Info(">>> 01: prevCR.Spec.Storage.OSS >>> %s", prevCR.Spec.Storage.OSS)
 
 	if cr.ObjectMeta.DeletionTimestamp != nil {
 		err = c.finalizeResources(cr)
@@ -283,6 +287,7 @@ func (c *Controller) sync() error {
 	}
 	c.syncStatus(cr, deploy, routes, applyError)
 
+	klog.Info(">>> sync() >>> 02")
 	metadataChanged := strategy.Metadata(&prevCR.ObjectMeta, &cr.ObjectMeta)
 	specChanged := !reflect.DeepEqual(prevCR.Spec, cr.Spec)
 	if metadataChanged || specChanged {
@@ -291,6 +296,13 @@ func (c *Controller) sync() error {
 			klog.Errorf("unable to calculate difference in %s: %s", utilObjectInfo(cr), err)
 		}
 		klog.Infof("object changed: %s (metadata=%t, spec=%t): %s", utilObjectInfo(cr), metadataChanged, specChanged, difference)
+		klog.Info(">>> prevCR.oI >>> %s", utilObjectInfo(prevCR))
+		klog.Info(">>> prevCR.v >>> %v", prevCR)
+		klog.Info(">>> prevCR.s >>> %s", prevCR)
+		klog.Info(">>> prevCR.Spec.Storage >>> %s", prevCR.Spec.Storage)
+		klog.Info(">>> cr >>> %v", cr)
+		klog.Info(">>> difference >>> %v", difference)
+		klog.Info(">>> specChanged >>> %v", specChanged)
 
 		var updatedCR *imageregistryv1.Config
 		if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
@@ -319,7 +331,7 @@ func (c *Controller) sync() error {
 		// want it to succeed.
 		cr.ResourceVersion = updatedCR.ResourceVersion
 	}
-
+	klog.Info(">>> sync() >>> 03")
 	cr.Status.ObservedGeneration = cr.Generation
 	statusChanged := !reflect.DeepEqual(prevCR.Status, cr.Status)
 	if statusChanged {
@@ -328,7 +340,7 @@ func (c *Controller) sync() error {
 			klog.Errorf("unable to calculate difference in %s: %s", utilObjectInfo(cr), err)
 		}
 		klog.Infof("object changed: %s (status=%t): %s", utilObjectInfo(cr), statusChanged, difference)
-
+		klog.Infof(difference)
 		_, err = c.clients.RegOp.ImageregistryV1().Configs().UpdateStatus(
 			context.TODO(), cr, metaapi.UpdateOptions{},
 		)
